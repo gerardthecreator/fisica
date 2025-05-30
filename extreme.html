@@ -1,0 +1,625 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>El Dardo y el Mono: Explicación Visual Mejorada</title>
+  <link href="https://fonts.googleapis.com/css2?family=Anton&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
+  <style>
+    :root {
+      --bg-primary: #0F0F0F; /* Fondo principal oscuro */
+      --text-main: #E0E0E0; /* Texto principal claro */
+      --text-secondary: #B0B0B0; /* Texto secundario */
+      --heading-color-1: #60A5FA; /* Azul vibrante para h1 */
+      --heading-color-2: #A7F3D0; /* Verde menta para h2 */
+      --heading-color-3: #FCD34D; /* Amarillo suave para h3 */
+      --highlight-color: #FFD700; /* Dorado para texto fuerte */
+      --link-color: #60A5FA; /* Azul para enlaces */
+      --link-hover-color: #3B82F6; /* Azul oscuro al pasar el mouse */
+      --section-border: #2A2A2A; /* Borde sutil */
+      --equation-bg: #1A1A1A; /* Fondo para ecuaciones */
+      --button-bg: #60A5FA; /* Botón azul */
+      --button-hover-bg: #3B82F6; /* Botón azul oscuro */
+      --canvas-bg: #0A0A0A; /* Fondo del lienzo */
+    }
+
+    body {
+      font-family: 'Anton', sans-serif;
+      font-weight: 400;
+      font-size: 1rem;
+      line-height: 1.8;
+      letter-spacing: 0.03em;
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+    }
+    .container {
+      max-width: 100%;
+      padding: 1.5rem;
+      margin: 0 auto;
+    }
+    h1, h2, h3 {
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      line-height: 1.2;
+      margin-bottom: 0.75rem;
+    }
+    h1 {
+      font-size: 3rem;
+      color: var(--heading-color-1);
+      text-align: center;
+      margin-bottom: 2rem;
+      text-shadow: 0 0 8px rgba(96, 165, 250, 0.6);
+    }
+    h2 {
+      font-size: 2.4rem;
+      color: var(--heading-color-2);
+      margin-top: 3rem;
+      border-bottom: 1px solid var(--section-border);
+      padding-bottom: 0.5rem;
+    }
+    h3 {
+      font-size: 1.8rem;
+      color: var(--heading-color-3);
+      margin-top: 2rem;
+      margin-bottom: 0.75rem;
+    }
+    p {
+      color: var(--text-main);
+      margin-bottom: 1rem;
+    }
+    strong {
+      color: var(--highlight-color);
+    }
+    a {
+      color: var(--link-color);
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+    a:hover {
+      color: var(--link-hover-color);
+      text-decoration: underline;
+    }
+    section {
+      background-color: var(--bg-primary);
+      border: 1px solid var(--section-border);
+      border-radius: 0.75rem;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+    }
+    .equation {
+      background-color: var(--equation-bg);
+      color: var(--text-main);
+      padding: 1rem;
+      border-radius: 0.5rem;
+      text-align: center;
+      margin: 1.5rem 0;
+      border: 1px solid var(--section-border);
+      overflow-x: auto;
+      white-space: nowrap;
+      max-width: 100%;
+      -webkit-overflow-scrolling: touch;
+    }
+    .mjx-chtml {
+      color: var(--text-main) !important;
+      font-size: 1.15rem !important;
+    }
+    canvas {
+      display: block;
+      margin: 1.5rem auto;
+      max-width: 95%; /* Adjusted max-width */
+      height: 300px; /* Increased base height */
+      border: 2px solid var(--section-border);
+      border-radius: 0.75rem;
+      background-color: var(--canvas-bg);
+    }
+    .btn {
+      padding: 1.2rem 2rem;
+      font-size: 1.3rem;
+      font-family: 'Anton', sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      border-radius: 0.75rem;
+      cursor: pointer;
+      background-color: var(--button-bg);
+      color: #ffffff;
+      border: none;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      transition: all 0.3s ease;
+    }
+    .btn:hover {
+      background-color: var(--button-hover-bg);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.6);
+    }
+    .btn:active {
+      transform: translateY(0);
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Styles for explanation buttons and content */
+    .step-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 0.75rem;
+      flex-wrap: wrap; /* Allow wrapping on small screens */
+    }
+
+    .step-header h3 {
+      margin-bottom: 0; /* Remove default margin */
+      flex-grow: 1; /* Allow h3 to take available space */
+    }
+
+    .explanation-btn {
+      background-color: #4A5568; /* Slightly darker gray for clarity */
+      color: #E0E0E0;
+      padding: 0.5rem 1rem;
+      font-size: 0.9rem;
+      letter-spacing: 0.05em;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      border: none;
+      transition: background-color 0.3s ease;
+      margin-left: 1rem; /* Space from the h3 */
+      flex-shrink: 0; /* Prevent button from shrinking */
+    }
+
+    .explanation-btn:hover {
+      background-color: #2D3748; /* Even darker gray on hover */
+    }
+
+    .explanation-content {
+      background-color: #1A202C; /* Darker background for explanation */
+      color: #B0B0B0;
+      padding: 1rem;
+      border-radius: 0.5rem;
+      margin-top: 1rem;
+      border: 1px solid var(--section-border);
+      box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.3);
+      display: none; /* Hidden by default */
+    }
+
+    @media (max-width: 640px) {
+      body {
+        font-size: 0.95rem;
+        line-height: 1.7;
+      }
+      .container {
+        padding: 1rem;
+      }
+      h1 {
+        font-size: 2.5rem;
+        margin-bottom: 1.5rem;
+      }
+      h2 {
+        font-size: 2rem;
+        margin-top: 2rem;
+      }
+      h3 {
+        font-size: 1.6rem;
+        margin-top: 1.5rem;
+      }
+      section {
+        padding: 1.2rem;
+        margin-bottom: 1.2rem;
+      }
+      .equation {
+        padding: 0.8rem;
+        margin: 1.2rem 0;
+      }
+      canvas {
+        height: 250px; /* Adjusted height for smaller screens */
+        margin: 1.2rem auto;
+      }
+      .btn {
+        font-size: 1.2rem;
+        padding: 1rem 1.8rem;
+      }
+      .step-header {
+        flex-direction: column; /* Stack h3 and button vertically */
+        align-items: flex-start;
+      }
+      .step-header h3 {
+        margin-bottom: 0.5rem;
+      }
+      .explanation-btn {
+        margin-left: 0; /* No margin on small screens when stacked */
+        width: 100%; /* Full width button */
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container mx-auto">
+    <section>
+      <h1>El Dardo y el Mono</h1>
+      <nav>
+        <h2>Índice</h2>
+        <ul class="list-disc pl-6">
+          <li><a href="#intro">Introducción</a></li>
+          <li><a href="#solution">Solución Paso a Paso</a></li>
+          <li><a href="#animation">Animación</a></li>
+          <li><a href="#conclusion">Conclusión</a></li>
+        </ul>
+      </nav>
+    </section>
+
+    <section id="intro">
+      <h2>¿De qué trata este problema?</h2>
+      <p>
+        Imagina que lanzas un dardo hacia un mono en un árbol, a <strong>50 metros</strong> de distancia y <strong>10 metros</strong> de altura. Cuando lanzas el dardo, el mono se suelta y cae al suelo, que está <strong>11.2 metros</strong> por debajo de su posición inicial. Queremos la <strong>velocidad mínima</strong> del dardo para que le pegue al mono antes de que toque el suelo. ¡No consideramos la resistencia del aire!
+      </p>
+    </section>
+
+    <section id="solution">
+      <h2>Solución Paso a Paso</h2>
+      
+      <div>
+        <div class="step-header">
+          <h3 id="step1-title">Paso 1: Movimiento del mono</h3>
+          <button class="explanation-btn" data-target="explanation1">¿Por qué este paso?</button>
+        </div>
+        <div id="explanation1" class="explanation-content">
+          <h4>Razón y Orden:</h4>
+          <p>
+            Comenzamos con el movimiento del mono porque su caída es un proceso independiente de cómo se lanza el dardo. El mono simplemente se suelta y cae debido a la gravedad. Calcular cuánto tiempo le toma al mono llegar al suelo nos da un <strong>límite de tiempo crucial</strong> para el problema. El dardo debe impactar al mono <em>antes</em> o <em>exactamente en</em> el momento en que el mono toca el suelo. Si el dardo llega después, el mono ya no estará en el aire para ser impactado. Este paso establece una condición fundamental que el dardo debe cumplir. Las ecuaciones usadas son las de la caída libre bajo gravedad constante.
+          </p>
+        </div>
+        <p>
+          El mono cae desde 10 m hasta el suelo (-1.2 m) y no se mueve horizontalmente (siempre está a 50 m). Su posición vertical es:
+        </p>
+        <div class="equation">
+          \[
+          y_m(t) = 10 - \frac{1}{2} (9.8) t^2 = 10 - 4.9 t^2
+          \]
+        </div>
+        <p>
+          Para saber cuánto tarda en llegar al suelo (\( y_m(t) = -1.2 \)):
+        </p>
+        <div class="equation">
+          \[
+          -1.2 = 10 - 4.9 t^2 \implies 4.9 t^2 = 11.2 \implies t^2 = \frac{11.2}{4.9} \approx 2.2857 \implies t \approx 1.5119 \, \text{s}
+          \]
+        </div>
+        <p>El mono tarda <strong>1.5119 segundos</strong> en llegar al suelo.</p>
+      </div>
+
+      <div>
+        <div class="step-header">
+          <h3 id="step2-title">Paso 2: Movimiento del dardo</h3>
+          <button class="explanation-btn" data-target="explanation2">¿Por qué este paso?</button>
+        </div>
+        <div id="explanation2" class="explanation-content">
+          <h4>Razón y Orden:</h4>
+          <p>
+            Una vez que comprendemos el movimiento de la "víctima" (el mono), el siguiente paso lógico es describir el movimiento del "proyectil" (el dardo). Necesitamos conocer las ecuaciones de su trayectoria para poder luego establecer la condición de impacto. Se descompone la velocidad inicial \( v_0 \) en sus componentes horizontal (\( v_0 \cos \theta \)) y vertical (\( v_0 \sin \theta \)) porque la gravedad solo afecta el movimiento vertical. Este paso nos da las herramientas matemáticas para seguir el dardo a lo largo del tiempo.
+          </p>
+        </div>
+        <p>
+          El dardo se lanza desde (0, 0) con velocidad \( v_0 \) y ángulo \( \theta \). Sus posiciones son:
+        </p>
+        <div class="equation">
+          \[
+          x_d(t) = (v_0 \cos \theta) t
+          \]
+          \[
+          y_d(t) = (v_0 \sin \theta) t - 4.9 t^2
+          \]
+        </div>
+      </div>
+
+      <div>
+        <div class="step-header">
+          <h3 id="step3-title">Paso 3: Condición de impacto</h3>
+          <button class="explanation-btn" data-target="explanation3">¿Por qué este paso?</button>
+        </div>
+        <div id="explanation3" class="explanation-content">
+          <h4>Razón y Orden:</h4>
+          <p>
+            Este es el punto crucial del problema: para que el dardo impacte al mono, ambos deben estar en la <strong>misma posición (\(x\) y \(y\)) en el mismo instante de tiempo (\(t\))</strong>. Este paso implica igualar las ecuaciones de posición del dardo y del mono. La notable cancelación del término \( -4.9 t^2 \) en la ecuación vertical es un indicador clave de que la solución no depende del tiempo de caída en términos de la gravedad, simplificando significativamente el problema. Es el puente entre las descripciones individuales del movimiento y la interacción entre ellos.
+          </p>
+        </div>
+        <p>
+          El dardo debe alcanzar al mono (\( x_d(t) = 50 \), \( y_d(t) = y_m(t) \)) antes de 1.5119 s:
+        </p>
+        <div class="equation">
+          \[
+          (v_0 \cos \theta) t = 50 \implies v_0 \cos \theta = \frac{50}{t}
+          \]
+          \[
+          (v_0 \sin \theta) t - 4.9 t^2 = 10 - 4.9 t^2 \implies v_0 \sin \theta = \frac{10}{t}
+          \]
+        </div>
+      </div>
+
+      <div>
+        <div class="step-header">
+          <h3 id="step4-title">Paso 4: Encontrar el ángulo</h3>
+          <button class="explanation-btn" data-target="explanation4">¿Por qué este paso?</button>
+        </div>
+        <div id="explanation4" class="explanation-content">
+          <h4>Razón y Orden:</h4>
+          <p>
+            De las dos ecuaciones de impacto del Paso 3, tenemos las expresiones para \( v_0 \cos \theta \) y \( v_0 \sin \theta \). Dividir la ecuación vertical entre la horizontal (es decir, \((v_0 \sin \theta) / (v_0 \cos \theta)\)) es una técnica estándar en problemas de proyectiles que nos permite <strong>eliminar \( v_0 \) y \( t \)</strong>, y resolver directamente para el ángulo \( \theta \). En este caso particular, la elegante cancelación del tiempo \( t \) en el lado derecho de la ecuación simplifica aún más las cosas, mostrando la relación directa entre el ángulo y las distancias relativas. Encontrar el ángulo primero es eficiente porque el ángulo de lanzamiento es una propiedad intrínseca que no cambia, mientras que la velocidad inicial mínima sí dependerá del tiempo máximo disponible.
+          </p>
+        </div>
+        <p>
+          Dividimos las ecuaciones:
+        </p>
+        <div class="equation">
+          \[
+          \tan \theta = \frac{\frac{10}{t}}{\frac{50}{t}} = 0.2 \implies \theta = \arctan(0.2) \approx 11.31^\circ
+          \]
+        </div>
+      </div>
+
+      <div>
+        <div class="step-header">
+          <h3 id="step5-title">Paso 5: Velocidad mínima</h3>
+          <button class="explanation-btn" data-target="explanation5">¿Por qué este paso?</button>
+        </div>
+        <div id="explanation5" class="explanation-content">
+          <h4>Razón y Orden:</h4>
+          <p>
+            Con el ángulo \( \theta \) ya calculado y el tiempo máximo disponible para el impacto (\( t = 1.5119 \, \text{s} \), desde el Paso 1), ahora podemos volver a cualquiera de las ecuaciones de impacto (la horizontal o la vertical) para despejar la <strong>velocidad inicial \( v_0 \)</strong>. Usar el tiempo máximo que el mono permanece en el aire (1.5119 s) garantiza que la velocidad que calculamos es la <strong>velocidad mínima</strong> requerida. Si el dardo se lanza con una velocidad menor, no alcanzará al mono antes de que este toque el suelo. Este paso final une todas las piezas para obtener la respuesta al problema.
+          </p>
+        </div>
+        <p>
+          Usamos \( t = 1.5119 \, \text{s} \) y \( \cos \theta \approx 0.9806 \):
+        </p>
+        <div class="equation">
+          \[
+          v_0 = \frac{50}{1.5119 \cdot 0.9806} \approx 33.73 \, \text{m/s}
+          \]
+        </div>
+      </div>
+    </section>
+
+    <section id="animation">
+      <h2>Animación de la Solución</h2>
+      <p>
+        Mira cómo el dardo (triángulo rojo) alcanza al mono (círculo marrón) antes de que toque el suelo (línea verde). Usa \( v_0 = 33.73 \, \text{m/s} \) y \( \theta = 11.31^\circ \).
+      </p>
+      <div id="canvas-container" class="text-center"></div>
+      <button id="reset-btn" class="btn mt-4">Reiniciar Animación</button>
+    </section>
+
+    <section id="conclusion">
+      <h2>Conclusión</h2>
+      <p>
+        La <strong>velocidad inicial mínima</strong> del dardo es <strong>33.73 m/s</strong>, con un ángulo de <strong>11.31°</strong>. Esto asegura que el dardo alcance al mono justo antes de que toque el suelo en 1.5119 segundos.
+      </p>
+    </section>
+  </div>
+
+  <script>
+    let t = 0;
+    const g = 9.8;
+    const v0 = 33.73;
+    const theta = 11.31 * Math.PI / 180;
+    const v0x = v0 * Math.cos(theta);
+    const v0y = v0 * Math.sin(theta);
+    const tMax = 1.5119;
+    
+    // Max horizontal distance is 50m, max vertical travel (from monkey's perspective) is 10m - (-1.2m) = 11.2m
+    // Add some padding to the canvas dimensions to ensure visibility and prevent clipping
+    const maxX = 50;
+    const maxY = 10 - (-1.2) + 2; // Monkey's initial height + distance to ground + some buffer
+
+    let scaleX, scaleY;
+    let groundY; // Y-coordinate of the ground in canvas units
+
+    let path = [];
+    let stars = [];
+
+    function setup() {
+      // Set canvas width based on window width, ensuring it fits within the container
+      let canvasWidth = Math.min(window.innerWidth * 0.95, 600); // Max width 600px for larger screens
+      let canvasHeight = canvasWidth * (maxY / maxX); // Maintain aspect ratio for the simulation
+      if (canvasHeight < 250) canvasHeight = 250; // Ensure a minimum height
+      if (canvasHeight > 400) canvasHeight = 400; // Cap max height
+
+      let canvas = createCanvas(canvasWidth, canvasHeight);
+      canvas.parent('canvas-container');
+      frameRate(60);
+
+      // Calculate scales dynamically
+      // We want x=0 to be at canvas left, and x=50 to be at canvas right.
+      // We want y=-1.2 (ground) to be near the bottom, and y=10 (monkey start) to be near the top.
+      // The origin (0,0) in our physics world will be the dart launch point.
+      // We'll map the physics y-coordinates to canvas y-coordinates, where 0 is top of canvas.
+
+      // scaleX: maps 50m to canvasWidth
+      scaleX = width / (maxX * 1.1); // Add a small buffer on the right side
+      
+      // scaleY: maps the full vertical range (e.g., -1.2 to 10) to canvasHeight
+      // The total vertical range is 10 - (-1.2) = 11.2. Let's make the visible range 12-15m
+      const visibleMinY = -2; // Slightly below ground
+      const visibleMaxY = 12; // Slightly above monkey's start
+      const totalVisibleYRange = visibleMaxY - visibleMinY;
+
+      scaleY = height / totalVisibleYRange;
+
+      // Calculate groundY position on canvas
+      // The ground is at y = -1.2 in physics coordinates.
+      // In canvas coordinates, a higher y-value means lower on the screen.
+      // So, groundY = height - (physicsY - visibleMinY) * scaleY
+      groundY = height - (-1.2 - visibleMinY) * scaleY;
+
+      // Adjust the vertical offset for drawing to place the dart launch (0,0) correctly
+      // (0,0) physics coordinate should map to (0, groundY + (1.2 * scaleY)) on canvas.
+      // We'll modify the drawing functions to incorporate this offset.
+      
+      // Generate stars for the background
+      for (let i = 0; i < 50; i++) {
+        stars.push([random(width), random(height), random(1, 3)]);
+      }
+      document.getElementById('reset-btn').addEventListener('click', () => {
+        t = 0;
+        path = [];
+      });
+
+      window.addEventListener('resize', () => {
+        let newCanvasWidth = Math.min(window.innerWidth * 0.95, 600);
+        let newCanvasHeight = newCanvasWidth * (maxY / maxX);
+        if (newCanvasHeight < 250) newCanvasHeight = 250;
+        if (newCanvasHeight > 400) newCanvasHeight = 400;
+        resizeCanvas(newCanvasWidth, newCanvasHeight);
+        
+        // Recalculate scales and groundY on resize
+        scaleX = width / (maxX * 1.1);
+        scaleY = height / totalVisibleYRange;
+        groundY = height - (-1.2 - visibleMinY) * scaleY;
+        path = []; // Clear path on resize to avoid distortion
+      });
+    }
+
+    // Helper function to convert physics Y to canvas Y
+    function physicsToCanvasY(physicsY) {
+      const visibleMinY = -2;
+      return height - (physicsY - visibleMinY) * scaleY;
+    }
+
+    function draw() {
+      background(10, 10, 10); // Dark canvas background
+
+      // Draw stars
+      noStroke();
+      fill(255, 255, 255, 150);
+      for (let star of stars) {
+        ellipse(star[0], star[1], star[2], star[2]);
+      }
+
+      // Draw the ground
+      stroke(26, 92, 56);
+      strokeWeight(4);
+      line(0, groundY, width, groundY);
+      noStroke();
+      fill(224, 224, 224);
+      textSize(12);
+      textAlign(LEFT);
+      text("Suelo", 10, groundY - 5);
+
+      // Posición del dardo
+      let x_d = v0x * t;
+      let y_d = v0y * t - 0.5 * g * t * t;
+      path.push([x_d * scaleX, physicsToCanvasY(y_d)]);
+
+      // Dibujar trayectoria
+      stroke(255, 215, 0, 180);
+      strokeWeight(2);
+      for (let i = 1; i < path.length; i++) {
+        line(path[i-1][0], path[i-1][1], path[i][0], path[i][1]);
+      }
+
+      // Dibujar dardo
+      fill(255, 85, 85);
+      noStroke();
+      triangle(
+        x_d * scaleX - 7, physicsToCanvasY(y_d),
+        x_d * scaleX + 7, physicsToCanvasY(y_d),
+        x_d * scaleX, physicsToCanvasY(y_d) - 10 // Adjust triangle height based on scaleY if needed
+      );
+      fill(224, 224, 224);
+      textSize(12);
+      textAlign(CENTER);
+      text("Dardo", x_d * scaleX, physicsToCanvasY(y_d) - 12);
+
+      // Posición del mono
+      let x_m = 50;
+      let y_m = 10 - 0.5 * g * t * t;
+      fill(198, 138, 90);
+      ellipse(x_m * scaleX, physicsToCanvasY(y_m), 12, 12);
+      fill(255);
+      ellipse(x_m * scaleX - 3, physicsToCanvasY(y_m) - 3, 2, 2);
+      ellipse(x_m * scaleX + 3, physicsToCanvasY(y_m) - 3, 2, 2);
+      fill(224, 224, 224);
+      text("Mono", x_m * scaleX, physicsToCanvasY(y_m) - 12);
+
+      // Avanzar el tiempo
+      t += 0.016;
+      if (t > tMax) {
+        t = 0;
+        path = [];
+      }
+    }
+
+    // JavaScript for explanation buttons
+    document.addEventListener('DOMContentLoaded', () => {
+      const explanationButtons = document.querySelectorAll('.explanation-btn');
+
+      explanationButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          const targetId = button.dataset.target;
+          const explanationContent = document.getElementById(targetId);
+
+          if (explanationContent.style.display === 'block') {
+            explanationContent.style.display = 'none';
+            button.textContent = '¿Por qué este paso?';
+          } else {
+            // Close all other explanations first
+            document.querySelectorAll('.explanation-content').forEach(content => {
+              if (content !== explanationContent) {
+                content.style.display = 'none';
+              }
+            });
+            document.querySelectorAll('.explanation-btn').forEach(btn => {
+                if (btn !== button) {
+                    btn.textContent = '¿Por qué este paso?';
+                }
+            });
+
+            explanationContent.style.display = 'block';
+            button.textContent = 'Ocultar explicación';
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
